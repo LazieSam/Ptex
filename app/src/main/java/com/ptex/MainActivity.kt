@@ -13,17 +13,30 @@ import android.widget.Toast
 import com.ptex.document.Document
 import com.ptex.document.DocumentRepository
 
+import com.ptex.compiler.LatexCompiler
+import com.ptex.compiler.FakeLatexCompiler
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
 class MainActivity : Activity() {
 
     private lateinit var editor: EditText
     private lateinit var document: Document
     private lateinit var repository: DocumentRepository
+    
+    private lateinit var compiler: LatexCompiler
+    private val scope = CoroutineScope(
+        Dispatchers.Main
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
+        
         repository = DocumentRepository(this)
         document = repository.load()
+        compiler = FakeLatexCompiler()
 
         createUi()
         loadDocumentIntoEditor()
@@ -89,13 +102,29 @@ class MainActivity : Activity() {
         }
 
         compileButton.setOnClickListener {
+
             document.source = editor.text.toString()
 
-            Toast.makeText(
-                this,
-                "Compilation requested",
-                Toast.LENGTH_SHORT
-            ).show()
+            scope.launch {
+
+                val result = withContext(Dispatchers.Default) {
+                    compiler.compile(document)
+                }
+
+                if (result.success) {
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Compilation successful",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                } else {
+                    Toast.makeText(
+                        this@MainActivity,
+                        result.errorMessage ?: "Compilation failed",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
         }
     }
 
