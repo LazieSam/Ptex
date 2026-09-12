@@ -5,6 +5,7 @@ import com.ptex.document.Document
 interface LatexCompiler {
 
     suspend fun compile(
-        document: Document
+        document: Document,
+        onOutput: (String) -> Unit
     ): CompilationResult
 }

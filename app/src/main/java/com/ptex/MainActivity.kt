@@ -20,6 +20,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+import com.ptex.compiler.ProcessTestCompiler
+
+import android.content.Intent
+import com.ptex.debug.DebugActivity
+import com.ptex.debug.DebugLog
+
+import com.ptex.compiler.TectonicRunner
+
 class MainActivity : Activity() {
 
     private lateinit var editor: EditText
@@ -36,7 +44,7 @@ class MainActivity : Activity() {
         
         repository = DocumentRepository(this)
         document = repository.load()
-        compiler = FakeLatexCompiler()
+        compiler = ProcessTestCompiler()
 
         createUi()
         loadDocumentIntoEditor()
@@ -66,6 +74,10 @@ class MainActivity : Activity() {
         val compileButton = Button(this).apply {
             text = "Compile"
         }
+        val debugButton = Button(this).apply {
+            text = "Debug"
+        }
+        val tectonicRunner = TectonicRunner(this)
 
         toolbar.addView(
             title,
@@ -74,6 +86,7 @@ class MainActivity : Activity() {
 
         toolbar.addView(saveButton)
         toolbar.addView(compileButton)
+        toolbar.addView(debugButton)
 
         editor = EditText(this).apply {
             setTypeface(Typeface.MONOSPACE)
@@ -96,19 +109,42 @@ class MainActivity : Activity() {
         )
 
         setContentView(root)
+        
+        debugButton.setOnClickListener {
+            startActivity(
+                Intent(this, DebugActivity::class.java)
+            )
+        }
 
         saveButton.setOnClickListener {
             saveDocument()
         }
+compileButton.setOnClickListener {
 
-        compileButton.setOnClickListener {
+    DebugLog.clear()
+
+    scope.launch {
+
+        withContext(Dispatchers.IO) {
+            tectonicRunner.test { line ->
+                DebugLog.append(line)
+            }
+        }
+    }
+}
+
+        /*compileButton.setOnClickListener {
 
             document.source = editor.text.toString()
+
+            DebugLog.clear()
 
             scope.launch {
 
                 val result = withContext(Dispatchers.Default) {
-                    compiler.compile(document)
+                    compiler.compile(document) { line ->
+                        DebugLog.append(line)
+                    }
                 }
 
                 if (result.success) {
@@ -117,14 +153,14 @@ class MainActivity : Activity() {
                         "Compilation successful",
                         Toast.LENGTH_SHORT
                     ).show()
-                } else {
-                    Toast.makeText(
-                        this@MainActivity,
-                        result.errorMessage ?: "Compilation failed",
-                        Toast.LENGTH_LONG
-                    ).show()
                 }
             }
+        }*/
+ 
+        debugButton.setOnClickListener {
+            startActivity(
+                Intent(this, DebugActivity::class.java)
+            )
         }
     }
 

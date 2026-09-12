@@ -8,6 +8,10 @@
         android:supportsRtl="true">
 
         <activity
+            android:name=".debug.DebugActivity"
+            android:exported="false" />
+            
+        <activity
             android:name=".MainActivity"
             android:exported="true">
 
