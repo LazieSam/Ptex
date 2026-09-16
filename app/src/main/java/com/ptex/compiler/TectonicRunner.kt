@@ -1,6 +1,7 @@
 package com.ptex.compiler
 
 import android.content.Context
+import com.ptex.document.Document
 import java.io.File
 
 class TectonicRunner(
@@ -23,7 +24,8 @@ class TectonicRunner(
     "libglib-2.0.so.0",
     "libandroid-support.so",
     "libiconv.so",
-    "libpcre2-8.so"
+    "libpcre2-8.so",
+    "cert.pem"
     )
     private val executable: File
     get() = File(context.filesDir, "tectonic")
@@ -53,7 +55,7 @@ class TectonicRunner(
         executable.setExecutable(true)
     }
 
-    fun test(onOutput: (String) -> Unit): Int {
+    /*fun test(onOutput: (String) -> Unit): Int {
 
         prepare()
 
@@ -86,5 +88,100 @@ class TectonicRunner(
         onOutput("Tectonic exited with code: $exitCode")
 
         return exitCode
+    }*/
+    fun compile(
+    document: Document,
+    onOutput: (String) -> Unit
+    ): File? {
+
+        prepare()
+
+        val external = context.getExternalFilesDir(null)
+            ?: throw IllegalStateException("External storage unavailable")
+
+        val outputDir = File(external, "pdf")
+        outputDir.mkdirs()
+
+        val workDir = File(context.filesDir, "tectonic-work")
+        workDir.mkdirs()
+
+        val homeDir = File(context.filesDir, "tectonic-home")
+        homeDir.mkdirs()
+
+        val texFile = File(workDir, document.fileName)
+        texFile.writeText(document.source)
+
+        onOutput("Working directory: ${workDir.absolutePath}")
+        onOutput("Output directory: ${outputDir.absolutePath}")
+        onOutput("Writing ${texFile.name}...")
+        onOutput("Starting Tectonic...")
+
+        return try {
+            val process = ProcessBuilder(
+                executable.absolutePath,
+                texFile.name
+            )
+                .directory(workDir)
+                .redirectErrorStream(true)
+
+            process.environment()["LD_LIBRARY_PATH"] =
+                context.filesDir.absolutePath
+                
+            process.environment()["SSL_CERT_FILE"] =
+                File(context.filesDir, "cert.pem").absolutePath
+
+            process.environment()["HOME"] =
+                homeDir.absolutePath
+
+            val processInstance = process.start()
+
+            processInstance.inputStream
+                .bufferedReader()
+                .useLines { lines ->
+                    lines.forEach { line ->
+                        onOutput(line)
+                    }
+                }
+
+            val exitCode = processInstance.waitFor()
+
+            onOutput("Tectonic exited with code: $exitCode")
+
+            if (exitCode != 0) {
+                onOutput("Compilation failed.")
+                null
+            } else {
+                val generatedPdf = File(
+                    workDir,
+                    texFile.nameWithoutExtension + ".pdf"
+                )
+
+                if (!generatedPdf.exists()) {
+                    onOutput("ERROR: PDF was not generated.")
+                    null
+                } else {
+                    val finalPdf = File(
+                        outputDir,
+                        generatedPdf.name
+                    )
+
+                    generatedPdf.copyTo(
+                        finalPdf,
+                        overwrite = true
+                    )
+
+                    onOutput("PDF generated!")
+                    onOutput("PDF: ${finalPdf.absolutePath}")
+                    onOutput("Size: ${finalPdf.length()} bytes")
+
+                    finalPdf
+                }
+            }
+
+        } catch (e: Exception) {
+            onOutput("ERROR: ${e::class.simpleName}")
+            onOutput("ERROR: ${e.message}")
+            null
+        }
     }
 }

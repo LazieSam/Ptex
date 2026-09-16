@@ -126,7 +126,7 @@ compileButton.setOnClickListener {
     scope.launch {
 
         withContext(Dispatchers.IO) {
-            tectonicRunner.test { line ->
+            tectonicRunner.compile(document) { line ->
                 DebugLog.append(line)
             }
         }
