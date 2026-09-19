@@ -1,6 +1,6 @@
 package com.ptex
 
-import android.app.Activity
+import androidx.activity.ComponentActivity
 import android.os.Bundle
 import android.graphics.Typeface
 import android.view.Gravity
@@ -28,7 +28,13 @@ import com.ptex.debug.DebugLog
 
 import com.ptex.compiler.TectonicRunner
 
-class MainActivity : Activity() {
+import android.net.Uri
+import androidx.activity.result.contract.ActivityResultContracts
+import java.io.File
+
+import com.ptex.compiler.PdfExporter
+
+class MainActivity : ComponentActivity() {
 
     private lateinit var editor: EditText
     private lateinit var document: Document
@@ -45,6 +51,7 @@ class MainActivity : Activity() {
         repository = DocumentRepository(this)
         document = repository.load()
         compiler = ProcessTestCompiler()
+        pdfExporter = PdfExporter(this)
 
         createUi()
         loadDocumentIntoEditor()
@@ -119,48 +126,115 @@ class MainActivity : Activity() {
         saveButton.setOnClickListener {
             saveDocument()
         }
-compileButton.setOnClickListener {
+    compileButton.setOnClickListener {
 
-    DebugLog.clear()
+        DebugLog.clear()
 
-    scope.launch {
+    // Make sure the latest editor contents are compiled
+        document.source = editor.text.toString()
 
-        withContext(Dispatchers.IO) {
-            tectonicRunner.compile(document) { line ->
-                DebugLog.append(line)
+        scope.launch {
+
+            val result = withContext(Dispatchers.IO) {
+                tectonicRunner.compile(document) { line ->
+                    DebugLog.append(line)
+                }
+            }
+
+            if (result.success && result.pdfFile != null) {
+                exportPdf(result.pdfFile)
+            } else {
+                DebugLog.append(
+                    "Compilation failed."
+                )
+
+                result.errorMessage?.let { error ->
+                    DebugLog.append("ERROR: $error")
+                }
             }
         }
     }
-}
-
-        /*compileButton.setOnClickListener {
-
-            document.source = editor.text.toString()
-
-            DebugLog.clear()
-
-            scope.launch {
-
-                val result = withContext(Dispatchers.Default) {
-                    compiler.compile(document) { line ->
-                        DebugLog.append(line)
-                    }
-                }
-
-                if (result.success) {
-                    Toast.makeText(
-                        this@MainActivity,
-                        "Compilation successful",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-            }
-        }*/
  
         debugButton.setOnClickListener {
             startActivity(
                 Intent(this, DebugActivity::class.java)
             )
+        }
+    }
+    
+    private lateinit var pdfExporter: PdfExporter
+    private var pendingPdfFile: File? = null
+    
+    private val savePdfLauncher =
+    registerForActivityResult(
+        ActivityResultContracts.CreateDocument("application/pdf")
+    ) { uri ->
+
+        if (uri == null) {
+            DebugLog.append("PDF save cancelled.")
+            pendingPdfFile = null
+            return@registerForActivityResult
+        }
+
+        val pdfFile = pendingPdfFile
+        pendingPdfFile = null
+
+        if (pdfFile == null) {
+            DebugLog.append("ERROR: No PDF waiting to be saved.")
+            return@registerForActivityResult
+        }
+
+        pdfExporter.savedUri = uri
+
+        if (pdfExporter.save(pdfFile, uri)) {
+            DebugLog.append("PDF saved successfully.")
+            DebugLog.append("Destination: $uri")
+
+            Toast.makeText(
+                this,
+                "PDF saved",
+                Toast.LENGTH_SHORT
+            ).show()
+
+        } else {
+            DebugLog.append("ERROR: Failed to save PDF.")
+
+            Toast.makeText(
+                this,
+                "Failed to save PDF",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+    private fun exportPdf(pdfFile: File) {
+
+        val uri = pdfExporter.savedUri
+
+        if (uri == null) {
+            pendingPdfFile = pdfFile
+            savePdfLauncher.launch(pdfFile.name)
+            return
+        }
+
+        if (pdfExporter.save(pdfFile, uri)) {
+            DebugLog.append("PDF saved successfully.")
+            DebugLog.append("Destination: $uri")
+
+            Toast.makeText(
+                this,
+                "PDF saved",
+                Toast.LENGTH_SHORT
+            ).show()
+
+        } else {
+            DebugLog.append(
+                "Saved PDF location is no longer available."
+            )
+
+            pdfExporter.savedUri = null
+            pendingPdfFile = pdfFile
+
+            savePdfLauncher.launch(pdfFile.name)
         }
     }
 

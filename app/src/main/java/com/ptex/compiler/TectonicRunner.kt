@@ -92,7 +92,7 @@ class TectonicRunner(
     fun compile(
     document: Document,
     onOutput: (String) -> Unit
-    ): File? {
+    ): CompilationResult {
 
         prepare()
 
@@ -148,8 +148,10 @@ class TectonicRunner(
             onOutput("Tectonic exited with code: $exitCode")
 
             if (exitCode != 0) {
-                onOutput("Compilation failed.")
-                null
+                CompilationResult(
+                    success = false,
+                    errorMessage = "Compilation failed."
+                )
             } else {
                 val generatedPdf = File(
                     workDir,
@@ -157,8 +159,10 @@ class TectonicRunner(
                 )
 
                 if (!generatedPdf.exists()) {
-                    onOutput("ERROR: PDF was not generated.")
-                    null
+                    CompilationResult(
+                        success = false,
+                        errorMessage = "Compilation failed."
+                    )
                 } else {
                     val finalPdf = File(
                         outputDir,
@@ -174,14 +178,20 @@ class TectonicRunner(
                     onOutput("PDF: ${finalPdf.absolutePath}")
                     onOutput("Size: ${finalPdf.length()} bytes")
 
-                    finalPdf
+                    CompilationResult(
+                        success = true,
+                        pdfFile = finalPdf
+                    )
                 }
             }
-
         } catch (e: Exception) {
             onOutput("ERROR: ${e::class.simpleName}")
             onOutput("ERROR: ${e.message}")
-            null
+
+            CompilationResult(
+                success = false,
+                errorMessage = e.message
+            )
         }
     }
 }
