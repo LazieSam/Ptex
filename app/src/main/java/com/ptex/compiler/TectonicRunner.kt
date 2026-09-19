@@ -1,7 +1,7 @@
 package com.ptex.compiler
 
 import android.content.Context
-import com.ptex.document.Document
+import com.ptex.document.Project
 import java.io.File
 
 class TectonicRunner(
@@ -54,43 +54,8 @@ class TectonicRunner(
 
         executable.setExecutable(true)
     }
-
-    /*fun test(onOutput: (String) -> Unit): Int {
-
-        prepare()
-
-        onOutput("Tectonic executable: ${executable.absolutePath}")
-        onOutput("Exists: ${executable.exists()}")
-        onOutput("Executable: ${executable.canExecute()}")
-        onOutput("Size: ${executable.length()} bytes")
-        onOutput("Starting Tectonic...")
-
-        val processBuilder = ProcessBuilder(
-            executable.absolutePath,
-            "--version"
-        )
-            .directory(context.filesDir)
-            .redirectErrorStream(true)
-
-        processBuilder.environment()["LD_LIBRARY_PATH"] =
-            context.filesDir.absolutePath
-
-        val process = processBuilder.start()
-
-        process.inputStream.bufferedReader().useLines { lines ->
-            lines.forEach { line ->
-                onOutput(line)
-            }
-        }
-
-        val exitCode = process.waitFor()
-
-        onOutput("Tectonic exited with code: $exitCode")
-
-        return exitCode
-    }*/
     fun compile(
-    document: Document,
+    project: Project,
     onOutput: (String) -> Unit
     ): CompilationResult {
 
@@ -102,14 +67,15 @@ class TectonicRunner(
         val outputDir = File(external, "pdf")
         outputDir.mkdirs()
 
-        val workDir = File(context.filesDir, "tectonic-work")
-        workDir.mkdirs()
+        val workDir = project.rootDirectory
 
         val homeDir = File(context.filesDir, "tectonic-home")
         homeDir.mkdirs()
 
-        val texFile = File(workDir, document.fileName)
-        texFile.writeText(document.source)
+        val texFile = File(
+            project.rootDirectory,
+            project.mainFile
+        )
 
         onOutput("Working directory: ${workDir.absolutePath}")
         onOutput("Output directory: ${outputDir.absolutePath}")

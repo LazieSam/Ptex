@@ -11,16 +11,14 @@ import android.widget.TextView
 import android.widget.Toast
 
 import com.ptex.document.Document
-import com.ptex.document.DocumentRepository
+import com.ptex.document.Project
+import com.ptex.document.ProjectRepository
 
-import com.ptex.compiler.LatexCompiler
-import com.ptex.compiler.FakeLatexCompiler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-import com.ptex.compiler.ProcessTestCompiler
 
 import android.content.Intent
 import com.ptex.debug.DebugActivity
@@ -37,10 +35,10 @@ import com.ptex.compiler.PdfExporter
 class MainActivity : ComponentActivity() {
 
     private lateinit var editor: EditText
+    private lateinit var project: Project
     private lateinit var document: Document
-    private lateinit var repository: DocumentRepository
+    private lateinit var repository: ProjectRepository
     
-    private lateinit var compiler: LatexCompiler
     private val scope = CoroutineScope(
         Dispatchers.Main
     )
@@ -48,9 +46,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        repository = DocumentRepository(this)
-        document = repository.load()
-        compiler = ProcessTestCompiler()
+        repository = ProjectRepository(this)
+        project = repository.getDefaultProject()
+        document = repository.loadMainDocument(project)
         pdfExporter = PdfExporter(this)
 
         createUi()
@@ -136,7 +134,7 @@ class MainActivity : ComponentActivity() {
         scope.launch {
 
             val result = withContext(Dispatchers.IO) {
-                tectonicRunner.compile(document) { line ->
+                tectonicRunner.compile(project) { line ->
                     DebugLog.append(line)
                 }
             }
@@ -245,7 +243,7 @@ class MainActivity : ComponentActivity() {
     private fun saveDocument() {
         document.source = editor.text.toString()
 
-        repository.save(document)
+        repository.saveDocument(project, document)
 
         Toast.makeText(
             this,
@@ -258,6 +256,6 @@ class MainActivity : ComponentActivity() {
         super.onPause()
 
         document.source = editor.text.toString()
-        repository.save(document)
+        repository.saveDocument(project, document)
     }
 }
