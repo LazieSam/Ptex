@@ -10,6 +10,9 @@
         <activity
             android:name=".debug.DebugActivity"
             android:exported="false" />
+        <activity
+            android:name=".pdf.PdfViewerActivity"
+            android:exported="false" />
             
         <activity
             android:name=".home.HomeActivity"

@@ -33,6 +33,8 @@ import android.text.TextWatcher
 
 import java.io.File
 
+import com.ptex.pdf.PdfViewerActivity
+
 class EditorActivity : ComponentActivity() {
 
     private lateinit var editor: EditText
@@ -303,7 +305,7 @@ class EditorActivity : ComponentActivity() {
 
                 if (result.success && result.pdfFile != null) {
 
-                    exportPdf(result.pdfFile)
+                    openPdfViewer(result.pdfFile)
 
                 } else {
 
@@ -500,5 +502,18 @@ class EditorActivity : ComponentActivity() {
                 document
             )
         }
+    }
+    private fun openPdfViewer(pdfFile: File) {
+    val intent = Intent(
+        this,
+        PdfViewerActivity::class.java
+    )
+
+    intent.putExtra(
+        "pdf_path",
+        pdfFile.absolutePath
+    )
+
+    startActivity(intent)
     }
 }
