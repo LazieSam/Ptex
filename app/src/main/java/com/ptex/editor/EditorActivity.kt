@@ -21,6 +21,7 @@ import com.ptex.debug.DebugLog
 import com.ptex.document.Document
 import com.ptex.document.Project
 import com.ptex.document.ProjectRepository
+import com.ptex.editor.EditorController
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -33,9 +34,10 @@ class EditorActivity : ComponentActivity() {
 
     private lateinit var editor: EditText
     private lateinit var project: Project
-    private lateinit var document: Document
     private lateinit var repository: ProjectRepository
+    private lateinit var controller: EditorController
     private lateinit var pdfExporter: PdfExporter
+    private lateinit var fileList: LinearLayout
 
     private val scope = CoroutineScope(
         Dispatchers.Main
@@ -92,10 +94,12 @@ class EditorActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         repository = ProjectRepository(this)
+
         project = repository.getDefaultProject()
-        document = repository.loadDocument(
-            project,
-            project.mainFile
+
+        controller = EditorController.create(
+            repository = repository,
+            project = project
         )
 
         pdfExporter = PdfExporter(this)
@@ -108,6 +112,9 @@ class EditorActivity : ComponentActivity() {
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
+        }
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
         }
 
         val toolbar = LinearLayout(this).apply {
@@ -150,16 +157,72 @@ class EditorActivity : ComponentActivity() {
 
         editor = EditText(this).apply {
             setTypeface(Typeface.MONOSPACE)
+
             gravity = Gravity.TOP or Gravity.START
+
             setPadding(16, 16, 16, 16)
+
             isSingleLine = false
-            setHorizontallyScrolling(true)
+            setHorizontallyScrolling(false)
+
+            inputType =
+                android.text.InputType.TYPE_CLASS_TEXT or
+                android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE or
+                android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
         }
 
         root.addView(toolbar)
+        
+        val filePanel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(16, 16, 16, 16)
+        }
+
+        fileList = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+
+        filePanel.addView(
+            TextView(this).apply {
+            text = "PROJECT"
+            textSize = 14f
+        }
+        )
+        val newFileButton = Button(this).apply {
+            text = "+ New File"
+            isAllCaps = false
+        }
+        
+        filePanel.addView(newFileButton)
+
+        filePanel.addView(
+            fileList,
+            LinearLayout.LayoutParams(
+                -1,
+                0,
+                1f
+            )
+        )
+
+        content.addView(
+            filePanel,
+            LinearLayout.LayoutParams(
+                220,
+                -1
+            )
+        )
+
+        content.addView(
+            editor,
+            LinearLayout.LayoutParams(
+                0,
+                -1,
+                1f
+            )
+        )
 
         root.addView(
-            editor,
+            content,
             LinearLayout.LayoutParams(
                 -1,
                 0,
@@ -168,6 +231,11 @@ class EditorActivity : ComponentActivity() {
         )
 
         setContentView(root)
+        refreshFileList()
+        
+        newFileButton.setOnClickListener {
+            showNewFileDialog()
+        }
 
         debugButton.setOnClickListener {
             startActivity(
@@ -186,8 +254,7 @@ class EditorActivity : ComponentActivity() {
 
             DebugLog.clear()
 
-            document.source =
-                editor.text.toString()
+            controller.activeDocument?.source = editor.text.toString()
 
             scope.launch {
 
@@ -214,6 +281,87 @@ class EditorActivity : ComponentActivity() {
                     }
                 }
             }
+        }
+    }
+    
+    private fun showNewFileDialog() {
+
+        val input = EditText(this).apply {
+            hint = "chapter1.tex"
+            setSingleLine(true)
+        }
+
+        android.app.AlertDialog.Builder(this)
+            .setTitle("New File")
+            .setView(input)
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Create") { _, _ ->
+
+                var fileName = input.text
+                    .toString()
+                    .trim()
+
+                if (fileName.isBlank()) {
+                    return@setPositiveButton
+                }
+
+                if (!fileName.endsWith(".tex")) {
+                    fileName += ".tex"
+                }
+
+                try {
+                    controller.createDocument(fileName)
+
+                    loadDocumentIntoEditor()
+                    refreshFileList()
+
+                } catch (e: Exception) {
+
+                    Toast.makeText(
+                        this,
+                        e.message ?: "Failed to create file",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+        .show()
+    }
+    
+    private fun refreshFileList() {
+
+        fileList.removeAllViews()
+
+        val files = repository.listFiles(project)
+
+        for (file in files) {
+
+            val fileName = file.relativeTo(
+                project.rootDirectory
+            ).path
+
+            val button = Button(this).apply {
+                text = fileName
+                gravity = Gravity.START
+            }
+
+            button.setOnClickListener {
+
+                val document = controller.selectDocument(fileName)
+                
+               /* Toast.makeText(
+                    this,
+                    "Selected: ${document?.fileName}",
+                    Toast.LENGTH_SHORT
+                ).show()*/
+    
+                
+                if (document != null) {
+                    editor.setText(document.source)
+                    refreshFileList()
+                }
+            }
+
+            fileList.addView(button)
         }
     }
 
@@ -264,10 +412,15 @@ class EditorActivity : ComponentActivity() {
     }
 
     private fun loadDocumentIntoEditor() {
-        editor.setText(document.source)
+        editor.setText(
+            controller.activeDocument?.source ?: ""
+        )   
     }
 
     private fun saveDocument() {
+
+        val document = controller.activeDocument
+            ?: return
 
         document.source =
             editor.text.toString()
@@ -287,12 +440,14 @@ class EditorActivity : ComponentActivity() {
     override fun onPause() {
         super.onPause()
 
-        document.source =
-            editor.text.toString()
+        controller.activeDocument?.let { document ->
 
-        repository.saveDocument(
-            project,
-            document
-        )
+            document.source = editor.text.toString()
+
+            repository.saveDocument(
+                project,
+                document
+            )
+        }
     }
 }

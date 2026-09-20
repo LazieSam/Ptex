@@ -84,6 +84,7 @@ class ProjectRepository(
     return project.rootDirectory
         .walkTopDown()
         .filter { it.isFile }
+        .filter { it.extension == "tex" }
         .toList()
     }
     fun createFile(

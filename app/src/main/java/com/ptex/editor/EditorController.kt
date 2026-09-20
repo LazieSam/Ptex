@@ -11,14 +11,40 @@ class EditorController(
 
     var state: EditorState = initialState
         private set
+    
+    val activeDocument: Document?
+    get() {
+        val activeFileName = state.activeFileName
+            ?: return null
 
-    fun openDocument(fileName: String) {
+        return state.openDocuments.firstOrNull {
+            it.fileName == activeFileName
+        }
+    }
+
+    fun openDocument(fileName: String): Document {
         val document = repository.loadDocument(
             state.project,
             fileName
         )
 
         state = state.openDocument(document)
+
+        return document
+    }
+    fun selectDocument(fileName: String): Document? {
+
+        if (
+            state.openDocuments.none {
+                it.fileName == fileName
+            }
+        ) {
+            openDocument(fileName)
+        } else {
+            activateDocument(fileName)
+        }
+
+        return activeDocument
     }
 
     fun createDocument(fileName: String) {
