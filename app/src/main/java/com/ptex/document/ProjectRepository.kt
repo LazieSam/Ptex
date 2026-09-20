@@ -18,6 +18,15 @@ class ProjectRepository(
 
         projectDirectory.mkdirs()
 
+        val mainFile = File(
+            projectDirectory,
+            "main.tex"
+        )
+
+        if (!mainFile.exists()) {
+            mainFile.writeText(defaultSource())
+        }
+
         return Project(
             name = "Default",
             rootDirectory = projectDirectory,
@@ -25,22 +34,24 @@ class ProjectRepository(
         )
     }
 
-    fun loadMainDocument(project: Project): Document {
+    fun loadDocument(
+        project: Project,
+        fileName: String
+    ): Document {
         val file = File(
             project.rootDirectory,
-            project.mainFile
+            fileName
         )
 
         if (!file.exists()) {
             return Document(
-                source = defaultSource(),
-                fileName = project.mainFile
+                fileName = fileName
             )
         }
 
         return Document(
             source = file.readText(),
-            fileName = project.mainFile,
+            fileName = fileName,
             isModified = false
         )
     }
@@ -68,5 +79,31 @@ class ProjectRepository(
 
             \end{document}
         """.trimIndent()
+    }
+    fun listFiles(project: Project): List<File> {
+    return project.rootDirectory
+        .walkTopDown()
+        .filter { it.isFile }
+        .toList()
+    }
+    fun createFile(
+        project: Project,
+        fileName: String
+    ): Document {
+        val file = File(
+            project.rootDirectory,
+            fileName
+        )
+
+        if (file.exists()) {
+            throw IllegalStateException(
+                "File already exists: $fileName"
+            )
+        }
+
+        file.parentFile?.mkdirs()
+        file.createNewFile()
+
+        return Document(fileName = fileName)
     }
 }

@@ -48,7 +48,7 @@ class MainActivity : ComponentActivity() {
         
         repository = ProjectRepository(this)
         project = repository.getDefaultProject()
-        document = repository.loadMainDocument(project)
+        document = repository.loadDocument(project, project.mainFile)
         pdfExporter = PdfExporter(this)
 
         createUi()
