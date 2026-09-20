@@ -25,6 +25,9 @@
         <activity
             android:name=".MainActivity"
             android:exported="false" />
+        <activity
+            android:name=".editor.EditorActivity"
+            android:exported="false" />
 
     </application>
 

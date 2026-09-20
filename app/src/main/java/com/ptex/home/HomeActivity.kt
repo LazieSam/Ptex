@@ -7,7 +7,7 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.ComponentActivity
-import com.ptex.MainActivity
+import com.ptex.editor.EditorActivity
 
 class HomeActivity : ComponentActivity() {
 
@@ -90,7 +90,7 @@ class HomeActivity : ComponentActivity() {
 
     private fun openEditor() {
         startActivity(
-            Intent(this, MainActivity::class.java)
+            Intent(this, EditorActivity::class.java)
         )
     }
 }
