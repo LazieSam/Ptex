@@ -9,6 +9,12 @@ import android.widget.TextView
 import androidx.activity.ComponentActivity
 import com.ptex.editor.EditorActivity
 
+import android.app.AlertDialog
+import android.widget.EditText
+import android.widget.Toast
+import com.ptex.document.ProjectRepository
+import com.ptex.document.Project
+
 class HomeActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -80,17 +86,97 @@ class HomeActivity : ComponentActivity() {
         setContentView(root)
 
         newProjectButton.setOnClickListener {
-            openEditor()
+            showNewProjectDialog()
         }
 
-        openProjectButton.setOnClickListener {
-            openEditor()
-        }
+    openProjectButton.setOnClickListener {
+        showOpenProjectDialog()
+    }
     }
 
-    private fun openEditor() {
-        startActivity(
-            Intent(this, EditorActivity::class.java)
-        )
+    private fun openEditor(project: Project) {
+
+    val intent = Intent(
+        this,
+        EditorActivity::class.java
+    )
+
+    intent.putExtra(
+        "project_name",
+        project.name
+    )
+
+    startActivity(intent)
+    }
+    
+    private fun showNewProjectDialog() {
+
+    val input = EditText(this).apply {
+        hint = "My Project"
+        setSingleLine(true)
+    }
+
+    AlertDialog.Builder(this)
+        .setTitle("New Project")
+        .setView(input)
+        .setNegativeButton("Cancel", null)
+        .setPositiveButton("Create") { _, _ ->
+
+            val name = input.text
+                .toString()
+                .trim()
+
+            if (name.isBlank()) {
+                Toast.makeText(
+                    this,
+                    "Project name cannot be empty",
+                    Toast.LENGTH_SHORT
+                ).show()
+
+                return@setPositiveButton
+            }
+
+            try {
+                val repository = ProjectRepository(this)
+
+                val project = repository.createProject(name)
+
+                openEditor(project)
+
+            } catch (e: Exception) {
+
+                Toast.makeText(
+                    this,
+                    e.message ?: "Failed to create project",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+        .show()
+    }
+    private fun showOpenProjectDialog() {
+    val repository = ProjectRepository(this)
+    val projects = repository.listProjects()
+
+    if (projects.isEmpty()) {
+        Toast.makeText(
+            this,
+            "No projects found",
+            Toast.LENGTH_SHORT
+        ).show()
+        return
+    }
+
+    val projectNames = projects
+        .map { it.name }
+        .toTypedArray()
+
+    AlertDialog.Builder(this)
+        .setTitle("Open Project")
+        .setItems(projectNames) { _, which ->
+            openEditor(projects[which])
+        }
+        .setNegativeButton("Cancel", null)
+        .show()
     }
 }

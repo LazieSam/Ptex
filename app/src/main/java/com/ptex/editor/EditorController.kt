@@ -23,6 +23,16 @@ class EditorController(
     }
 
     fun openDocument(fileName: String): Document {
+
+        val existingDocument = state.openDocuments.firstOrNull {
+            it.fileName == fileName
+        }
+
+        if (existingDocument != null) {
+            state = state.activateDocument(fileName)
+            return existingDocument
+        }
+
         val document = repository.loadDocument(
             state.project,
             fileName
@@ -33,18 +43,7 @@ class EditorController(
         return document
     }
     fun selectDocument(fileName: String): Document? {
-
-        if (
-            state.openDocuments.none {
-                it.fileName == fileName
-            }
-        ) {
-            openDocument(fileName)
-        } else {
-            activateDocument(fileName)
-        }
-
-        return activeDocument
+        return openDocument(fileName)
     }
 
     fun createDocument(fileName: String) {

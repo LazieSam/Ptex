@@ -107,4 +107,71 @@ class ProjectRepository(
 
         return Document(fileName = fileName)
     }
+    fun createProject(
+    name: String
+    ): Project {
+
+    val projectDirectory = File(
+        projectsDirectory,
+        name
+    )
+
+    if (projectDirectory.exists()) {
+        throw IllegalStateException(
+            "Project already exists: $name"
+        )
+    }
+
+    projectDirectory.mkdirs()
+
+    val mainFile = File(
+        projectDirectory,
+        "main.tex"
+    )
+
+    mainFile.writeText(defaultSource())
+
+    return Project(
+        name = name,
+        rootDirectory = projectDirectory,
+        mainFile = "main.tex"
+    )
+    }
+    fun getProject(name: String): Project {
+
+    val projectDirectory = File(
+        projectsDirectory,
+        name
+    )
+
+    if (!projectDirectory.exists()) {
+        throw IllegalStateException(
+            "Project not found: $name"
+        )
+    }
+
+    return Project(
+        name = name,
+        rootDirectory = projectDirectory,
+        mainFile = "main.tex"
+    )
+    }
+    fun listProjects(): List<Project> {
+    if (!projectsDirectory.exists()) {
+        return emptyList()
+    }
+
+    return projectsDirectory
+        .listFiles()
+        ?.filter { it.isDirectory }
+        ?.map { directory ->
+            Project(
+                name = directory.name,
+                rootDirectory = directory,
+                mainFile = "main.tex"
+            )
+        }
+        ?.sortedBy { it.name.lowercase() }
+        ?: emptyList()
+    }
 }

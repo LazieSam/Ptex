@@ -28,6 +28,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+import android.text.Editable
+import android.text.TextWatcher
+
 import java.io.File
 
 class EditorActivity : ComponentActivity() {
@@ -38,6 +41,8 @@ class EditorActivity : ComponentActivity() {
     private lateinit var controller: EditorController
     private lateinit var pdfExporter: PdfExporter
     private lateinit var fileList: LinearLayout
+    
+    private var suppressEditorChanges = false
 
     private val scope = CoroutineScope(
         Dispatchers.Main
@@ -95,7 +100,11 @@ class EditorActivity : ComponentActivity() {
 
         repository = ProjectRepository(this)
 
-        project = repository.getDefaultProject()
+        val projectName = intent.getStringExtra(
+            "project_name"
+        ) ?: "default"
+
+        project = repository.getProject(projectName)
 
         controller = EditorController.create(
             repository = repository,
@@ -170,6 +179,34 @@ class EditorActivity : ComponentActivity() {
                 android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE or
                 android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
         }
+        editor.addTextChangedListener(
+        object : TextWatcher {
+
+            override fun beforeTextChanged(
+                s: CharSequence?,
+                start: Int,
+                count: Int,
+                after: Int
+            ) {
+            }
+
+            override fun onTextChanged(
+                s: CharSequence?,
+                start: Int,
+                before: Int,
+                count: Int
+            ) {
+                if (!suppressEditorChanges) {
+                    controller.activeDocument?.isModified = true
+                }
+            }
+
+            override fun afterTextChanged(
+                s: Editable?
+            ) {
+            }
+        }
+    )
 
         root.addView(toolbar)
         
@@ -345,6 +382,9 @@ class EditorActivity : ComponentActivity() {
             }
 
             button.setOnClickListener {
+                controller.activeDocument?.let { currentDocument ->
+                    currentDocument.source = editor.text.toString()
+                }
 
                 val document = controller.selectDocument(fileName)
                 
@@ -356,7 +396,13 @@ class EditorActivity : ComponentActivity() {
     
                 
                 if (document != null) {
+
+                    suppressEditorChanges = true
+
                     editor.setText(document.source)
+
+                    suppressEditorChanges = false
+
                     refreshFileList()
                 }
             }
@@ -412,9 +458,14 @@ class EditorActivity : ComponentActivity() {
     }
 
     private fun loadDocumentIntoEditor() {
+
+        suppressEditorChanges = true
+
         editor.setText(
             controller.activeDocument?.source ?: ""
-        )   
+        )
+
+        suppressEditorChanges = false
     }
 
     private fun saveDocument() {
