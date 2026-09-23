@@ -174,4 +174,23 @@ class ProjectRepository(
         ?.sortedBy { it.name.lowercase() }
         ?: emptyList()
     }
+    fun clearPdfCache(): Int {
+    if (!projectsDirectory.exists()) {
+        return 0
+    }
+
+    var deletedCount = 0
+
+    projectsDirectory
+        .walkTopDown()
+        .filter { it.isFile }
+        .filter { it.extension.equals("pdf", ignoreCase = true) }
+        .forEach { file ->
+            if (file.delete()) {
+                deletedCount++
+            }
+        }
+
+    return deletedCount
+    }
 }

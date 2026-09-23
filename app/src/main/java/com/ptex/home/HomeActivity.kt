@@ -8,6 +8,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.ComponentActivity
 import com.ptex.editor.EditorActivity
+import com.ptex.settings.SettingsActivity
 
 import android.app.AlertDialog
 import android.widget.EditText
@@ -89,9 +90,17 @@ class HomeActivity : ComponentActivity() {
             showNewProjectDialog()
         }
 
-    openProjectButton.setOnClickListener {
-        showOpenProjectDialog()
-    }
+        openProjectButton.setOnClickListener {
+            showOpenProjectDialog()
+        }
+        settingsButton.setOnClickListener {
+            startActivity(
+                Intent(
+                    this,
+                    SettingsActivity::class.java
+                )
+            )
+        }
     }
 
     private fun openEditor(project: Project) {

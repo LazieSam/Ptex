@@ -61,10 +61,11 @@ class TectonicRunner(
 
         prepare()
 
-        val external = context.getExternalFilesDir(null)
-            ?: throw IllegalStateException("External storage unavailable")
+        val outputDir = File(
+            project.rootDirectory,
+            "output"
+        )
 
-        val outputDir = File(external, "pdf")
         outputDir.mkdirs()
 
         val workDir = project.rootDirectory
@@ -85,6 +86,8 @@ class TectonicRunner(
         return try {
             val process = ProcessBuilder(
                 executable.absolutePath,
+                "-o",
+                outputDir.absolutePath,
                 texFile.name
             )
                 .directory(workDir)
@@ -120,34 +123,24 @@ class TectonicRunner(
                 )
             } else {
                 val generatedPdf = File(
-                    workDir,
+                    outputDir,
                     texFile.nameWithoutExtension + ".pdf"
                 )
 
                 if (!generatedPdf.exists()) {
                     CompilationResult(
-                        success = false,
-                        errorMessage = "Compilation failed."
-                    )
+                    success = false,
+                    errorMessage = "Compilation failed."
+                )
                 } else {
-                    val finalPdf = File(
-                        outputDir,
-                        generatedPdf.name
-                    )
+                onOutput("PDF generated!")
+                onOutput("PDF: ${generatedPdf.absolutePath}")
+                onOutput("Size: ${generatedPdf.length()} bytes")
 
-                    generatedPdf.copyTo(
-                        finalPdf,
-                        overwrite = true
-                    )
-
-                    onOutput("PDF generated!")
-                    onOutput("PDF: ${finalPdf.absolutePath}")
-                    onOutput("Size: ${finalPdf.length()} bytes")
-
-                    CompilationResult(
-                        success = true,
-                        pdfFile = finalPdf
-                    )
+                CompilationResult(
+                    success = true,
+                    pdfFile = generatedPdf
+                )
                 }
             }
         } catch (e: Exception) {

@@ -13,6 +13,9 @@
         <activity
             android:name=".pdf.PdfViewerActivity"
             android:exported="false" />
+        <activity
+            android:name=".settings.SettingsActivity"
+            android:exported="false" />
             
         <activity
             android:name=".home.HomeActivity"

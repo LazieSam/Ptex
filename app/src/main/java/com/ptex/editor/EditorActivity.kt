@@ -16,7 +16,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 
 import com.ptex.compiler.PdfExporter
 import com.ptex.compiler.TectonicRunner
-import com.ptex.debug.DebugActivity
 import com.ptex.debug.DebugLog
 import com.ptex.document.Document
 import com.ptex.document.Project
@@ -147,8 +146,8 @@ class EditorActivity : ComponentActivity() {
             text = "Compile"
         }
 
-        val debugButton = Button(this).apply {
-            text = "Debug"
+        val previewButton = Button(this).apply {
+            text = "Preview"
         }
 
         val tectonicRunner = TectonicRunner(this)
@@ -164,7 +163,7 @@ class EditorActivity : ComponentActivity() {
 
         toolbar.addView(saveButton)
         toolbar.addView(compileButton)
-        toolbar.addView(debugButton)
+        toolbar.addView(previewButton)
 
         editor = EditText(this).apply {
             setTypeface(Typeface.MONOSPACE)
@@ -276,13 +275,23 @@ class EditorActivity : ComponentActivity() {
             showNewFileDialog()
         }
 
-        debugButton.setOnClickListener {
-            startActivity(
-                Intent(
-                    this,
-                    DebugActivity::class.java
-                )
+        previewButton.setOnClickListener {
+            val pdfFile = File(
+                project.rootDirectory,
+                "output/${project.mainFile.substringBeforeLast(".")}.pdf"
             )
+
+            if (!pdfFile.exists()) {
+                Toast.makeText(
+                    this,
+                    "No PDF available. Compile first.",
+                    Toast.LENGTH_SHORT
+                ).show()
+
+                return@setOnClickListener
+            }
+
+            openPdfViewer(pdfFile)
         }
 
         saveButton.setOnClickListener {
@@ -305,8 +314,11 @@ class EditorActivity : ComponentActivity() {
 
                 if (result.success && result.pdfFile != null) {
 
-                    openPdfViewer(result.pdfFile)
-
+                Toast.makeText(
+                    this@EditorActivity,
+                    "Compilation successful",
+                    Toast.LENGTH_SHORT
+                ).show()
                 } else {
 
                     DebugLog.append(
